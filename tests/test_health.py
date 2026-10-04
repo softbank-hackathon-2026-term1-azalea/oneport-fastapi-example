@@ -30,7 +30,7 @@ def test_ready_checks_database(client: TestClient) -> None:
 def test_version_exposes_release_info(client: TestClient) -> None:
     body = client.get("/version").json()
     assert body["app"] == "notes"
-    assert body["version"] == project_version() == "2.2.2"
+    assert body["version"] == project_version() == "3.3.3"
     assert set(body) == {"app", "version", "git_sha", "built_at", "color", "hostname", "started_at"}
 
 

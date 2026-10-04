@@ -1,6 +1,6 @@
 [project]
 name = "notes"
-version = "2.2.2"
+version = "3.3.3"
 description = "Oneport demo notes app (FastAPI)"
 requires-python = ">=3.13,<3.14"
 dependencies = [
