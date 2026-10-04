@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Oneport Notes</title>
+<style>
+  :root { --color: #6b7280; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif;
+         background: #f6f7f9; color: #1f2328; }
+  header { background: var(--color); color: #fff; padding: 28px 24px; transition: background .4s; }
+  header h1 { margin: 0 0 6px; font-size: 22px; }
+  header .version { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; }
+  header dl { display: grid; grid-template-columns: max-content 1fr; gap: 2px 14px; margin: 14px 0 0;
+              font-size: 13px; opacity: .92; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  header dt { opacity: .75; } header dd { margin: 0; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px 48px; }
+  form { display: flex; gap: 8px; margin-bottom: 16px; }
+  input[type=text] { flex: 1; padding: 10px 12px; border: 1px solid #d0d7de; border-radius: 6px; font-size: 15px; }
+  button { padding: 10px 14px; border: 0; border-radius: 6px; background: var(--color); color: #fff;
+           font-size: 14px; cursor: pointer; }
+  button.ghost { background: transparent; color: #6b7280; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid #d0d7de;
+       border-radius: 6px; padding: 10px 12px; margin-bottom: 8px; }
+  li .title { flex: 1; }
+  li.done .title { text-decoration: line-through; color: #6b7280; }
+  li input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--color); }
+  li time { font-size: 12px; color: #6b7280; font-variant-numeric: tabular-nums; }
+  .error { color: #cf222e; font-size: 13px; min-height: 18px; }
+</style>
+</head>
+<body>
+<header id="header">
+  <h1 id="app">notes</h1>
+  <div class="version" id="version">…</div>
+  <dl>
+    <dt>git</dt><dd id="git_sha">…</dd>
+    <dt>built</dt><dd id="built_at">…</dd>
+    <dt>host</dt><dd id="hostname">…</dd>
+    <dt>started</dt><dd id="started_at">…</dd>
+  </dl>
+</header>
+<main>
+  <form id="form">
+    <input id="title" type="text" name="title" maxlength="200" placeholder="새 노트" autocomplete="off" required>
+    <button type="submit">추가</button>
+  </form>
+  <div class="error" id="error"></div>
+  <ul id="notes"></ul>
+</main>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const fmt = (iso) => new Date(iso).toLocaleString();
+
+  async function loadVersion() {
+    try {
+      const r = await fetch("/version", { cache: "no-store" });
+      const v = await r.json();
+      for (const k of ["app", "version", "git_sha", "built_at", "hostname", "started_at"]) $(k).textContent = v[k];
+      document.documentElement.style.setProperty("--color", v.color);
+      document.title = `Oneport Notes ${v.version}`;
+    } catch (e) { $("version").textContent = "unreachable"; }
+  }
+
+  function render(notes) {
+    const ul = $("notes"); ul.replaceChildren();
+    for (const n of notes) {
+      const li = document.createElement("li");
+      if ("done" in n) {
+        li.classList.toggle("done", n.done);
+        const box = Object.assign(document.createElement("input"), { type: "checkbox", checked: n.done });
+        box.addEventListener("change", async () => {
+          const r = await fetch(`/notes/${n.id}`, { method: "PATCH", headers: { "content-type": "application/json" },
+                                                     body: JSON.stringify({ done: box.checked }) });
+          if (!r.ok) $("error").textContent = `변경 실패 (${r.status})`;
+          loadNotes();
+        });
+        li.append(box);
+      }
+      const title = Object.assign(document.createElement("span"), { className: "title", textContent: n.title });
+      const time = Object.assign(document.createElement("time"), { textContent: fmt(n.created_at) });
+      const del = Object.assign(document.createElement("button"), { className: "ghost", textContent: "삭제" });
+      del.addEventListener("click", async () => { await fetch(`/notes/${n.id}`, { method: "DELETE" }); loadNotes(); });
+      li.append(title, time, del); ul.appendChild(li);
+    }
+  }
+
+  async function loadNotes() {
+    try {
+      const r = await fetch("/notes", { cache: "no-store" });
+      render(await r.json());
+    } catch (e) { $("error").textContent = "노트를 불러오지 못했습니다."; }
+  }
+
+  $("form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    $("error").textContent = "";
+    const r = await fetch("/notes", { method: "POST", headers: { "content-type": "application/json" },
+                                      body: JSON.stringify({ title: $("title").value }) });
+    if (!r.ok) { $("error").textContent = `추가 실패 (${r.status})`; return; }
+    $("title").value = ""; loadNotes();
+  });
+
+  loadVersion(); loadNotes();
+  setInterval(loadVersion, 1000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+.venv
+.git
+.env
+.env.*
+.mypy_cache
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+tests
+compose.yaml
+README.md
+BUILT_AT
