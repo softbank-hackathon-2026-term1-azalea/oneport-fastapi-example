@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI, Request, Response
 
-from app.api.routes import health, notes, ui
+from app.api.routes import health, notes, ui, visits
+from app.core.cache import Cache
 from app.core.config import get_settings
 from app.core.db import Database
 from app.core.logging import configure_logging
@@ -26,13 +27,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         static_fields={"app": release.app, "version": release.version},
     )
     database = Database(settings.sqlalchemy_url)
+    cache = Cache(settings.redis_url) if settings.redis_url else None
     app.state.settings = settings
     app.state.release = release
     app.state.db = database
-    log.info("application started", extra=release.as_dict())
+    app.state.cache = cache
+    log.info("application started", extra={**release.as_dict(), "cache_enabled": cache is not None})
     try:
         yield
     finally:
+        if cache is not None:
+            await cache.close()
         await database.dispose()
         log.info("application stopped")
 
@@ -72,6 +77,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(notes.router)
+    app.include_router(visits.router)
     app.include_router(ui.router)
     register_exception_handlers(app)
     return app

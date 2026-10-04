@@ -40,6 +40,7 @@
     <dt>built</dt><dd id="built_at">…</dd>
     <dt>host</dt><dd id="hostname">…</dd>
     <dt>started</dt><dd id="started_at">…</dd>
+    <dt class="visits" hidden>visits</dt><dd class="visits" id="visits" hidden>…</dd>
   </dl>
 </header>
 <main>
@@ -63,6 +64,16 @@
       document.documentElement.style.setProperty("--color", v.color);
       document.title = `Oneport Notes ${v.version}`;
     } catch (e) { $("version").textContent = "unreachable"; }
+  }
+
+  async function loadVisits(method) {
+    try {
+      const r = await fetch("/visits", { method, cache: "no-store" });
+      for (const el of document.querySelectorAll(".visits")) el.hidden = !r.ok;
+      if (r.ok) $("visits").textContent = (await r.json()).visits;
+    } catch (e) {
+      for (const el of document.querySelectorAll(".visits")) el.hidden = true;
+    }
   }
 
   function render(notes) {
@@ -104,8 +115,8 @@
     $("title").value = ""; loadNotes();
   });
 
-  loadVersion(); loadNotes();
-  setInterval(loadVersion, 1000);
+  loadVersion(); loadNotes(); loadVisits("POST");
+  setInterval(() => { loadVersion(); loadVisits("GET"); }, 1000);
 })();
 </script>
 </body>

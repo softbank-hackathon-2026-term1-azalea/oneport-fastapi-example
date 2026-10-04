@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Response, status
 
-from app.api.deps import DatabaseDep, ReleaseDep, SettingsDep
+from app.api.deps import DatabaseDep, OptionalCacheDep, ReleaseDep, SettingsDep
 
 log = logging.getLogger(__name__)
 router = APIRouter(tags=["health"])
@@ -18,14 +18,26 @@ async def health(settings: SettingsDep, response: Response) -> dict[str, str]:
 
 
 @router.get("/ready")
-async def ready(database: DatabaseDep, response: Response) -> dict[str, str]:
+async def ready(
+    database: DatabaseDep, cache: OptionalCacheDep, response: Response
+) -> dict[str, str]:
+    body = {"status": "ok", "database": "up", "cache": "disabled"}
     try:
         await database.ping()
     except Exception:
-        log.exception("readiness check failed")
+        log.exception("database readiness check failed")
+        body["database"] = "down"
+    if cache is not None:
+        try:
+            await cache.ping()
+            body["cache"] = "up"
+        except Exception:
+            log.exception("cache readiness check failed")
+            body["cache"] = "down"
+    if "down" in body.values():
+        body["status"] = "unavailable"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
-        return {"status": "unavailable", "database": "down"}
-    return {"status": "ok", "database": "up"}
+    return body
 
 
 @router.get("/version")

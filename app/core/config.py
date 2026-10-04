@@ -22,9 +22,11 @@ class Settings(BaseSettings):
     db_user: str = "notes"
     db_password: SecretStr = SecretStr("")
 
+    redis_url: str | None = None
+
     app_force_unhealthy: bool = False
     launchpad_release_id: str | None = None
-    app_color: str = "#0969da"
+    app_color: str = "#2da44e"
 
     @property
     def sqlalchemy_url(self) -> URL:

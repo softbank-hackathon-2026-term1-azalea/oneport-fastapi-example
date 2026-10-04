@@ -11,6 +11,14 @@ services:
       timeout: 3s
       retries: 10
 
+  cache:
+    image: valkey/valkey:8-alpine
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   app:
     build:
       context: .
@@ -23,6 +31,7 @@ services:
       DB_NAME: notes
       DB_USER: notes
       DB_PASSWORD: notes
+      REDIS_URL: redis://cache:6379/0
       APP_COLOR: "${APP_COLOR:-#2da44e}"
       APP_FORCE_UNHEALTHY: "${APP_FORCE_UNHEALTHY:-false}"
       LOG_FORMAT: text
@@ -31,4 +40,6 @@ services:
       - "8080:8080"
     depends_on:
       db:
+        condition: service_healthy
+      cache:
         condition: service_healthy
