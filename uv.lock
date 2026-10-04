@@ -516,7 +516,7 @@ wheels = [
 
 [[package]]
 name = "notes"
-version = "1.2.1"
+version = "2.2.2"
 source = { virtual = "." }
 dependencies = [
     { name = "alembic" },

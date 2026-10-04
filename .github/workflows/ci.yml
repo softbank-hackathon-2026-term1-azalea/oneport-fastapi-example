@@ -4,7 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
-    tags: ["1.1.3", "1.2.1"]
+    tags: ["1.1.1", "2.2.2", "3.3.3"]
   workflow_dispatch:
 
 permissions:
@@ -48,3 +48,9 @@ jobs:
 
       - name: Build image from repository root
         run: docker build --platform linux/amd64 --build-arg GIT_SHA="$GITHUB_SHA" -t oneport-fastapi-example:ci .
+
+      - name: Verify image version and non-root user
+        run: |
+          expected_version=$(uv run python -c 'from app.core.release import project_version; print(project_version())')
+          docker run --rm --entrypoint python -e EXPECTED_VERSION="$expected_version" oneport-fastapi-example:ci \
+            -c 'import os; from app.core.release import project_version; assert os.getuid() == 999; assert project_version() == os.environ["EXPECTED_VERSION"]; print(project_version())'
